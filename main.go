@@ -1,20 +1,41 @@
 package main
 
 import(
-	"fmt"
+	"log"
+	"time"
 	"os"
-	//"io"
+	"os/signal"
+	"syscall"
 )
 
+type chanSig struct{}
+
+var(
+	workerPull = make(chan chanSig, 1000)
+	i=0
+)
+
+func printMyIncrement(){
+	defer func(){ <- workerPull }()
+	time.Sleep(60 * time.Millisecond)
+	i++
+}
+
+func signalInterceptor(s chan os.Signal){
+	<-s
+	time.Sleep(time.Second)
+	log.Println("Завершено пользователем")
+	os.Exit(0)
+}
+
 func main(){
-	file, err := os.Open("./nofile")
-	defer func(){
-		if rec:=recover(); rec!=nil{
-			fmt.Println("Восстановлено", rec)
-		}
-	}()
-	if err != nil{
-		panic(err)
+	sig:=make(chan os.Signal, 1)
+	signal.Notify(sig,syscall.SIGTERM)
+	go signalInterceptor(sig)
+
+	for i<1000{
+		workerPull <- chanSig{}
+		printMyIncrement()
 	}
-	defer file.Close()
+	log.Println(i)
 }
